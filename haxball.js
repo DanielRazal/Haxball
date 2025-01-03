@@ -9,26 +9,28 @@
 var room = HBInit({
     roomName: "Test",
     maxPlayers: 10,
-    public: true,
+    public: false,
     // password: "1234",
     geo: {
         code: "IL",
         lat: 31.0461,
         lon: 34.8516
     },
-    token: "thr1.AAAAAGd3Ye7VEzP7zwygLA.Ic6aVUdLBfU",
-    noPlayer: true
+    token: "thr1.AAAAAGd4BIKeVbwtZ8kyEA.qkLlRLsR2Y4",
+    noPlayer: false,
 });
 
 
-const RedTeam  = 1
-const BlueTeam  = 2
+const RedTeam = 1
+const BlueTeam = 2
+const badWords = 
+["בן זונה", "בן שרמוטה", "מניאק", ",תשרף", "תישרף", "כושי", "כושי חמודי", "רוסי", "רוסי מסריח", "fuck you", "fuck"]
 
 let lastTeamCombination = [];
 
 function shufflePlayers(players) {
     const shuffled = players.sort(() => Math.random() - 0.5);
-    
+
     return {
         red: [shuffled[0].id, shuffled[1].id],
         blue: [shuffled[2].id, shuffled[3].id]
@@ -3305,8 +3307,6 @@ var stadiumFileText = `
 `
 
 
-// room.setDefaultStadium("Classic");
-room.setCustomStadium(stadiumFileText)
 room.setScoreLimit(3);
 room.setTimeLimit(3);
 
@@ -3324,14 +3324,26 @@ function clearAllBans() {
     room.clearBans();
     room.sendChat("Clear Bans!");
     console.log("Clear Bans!");
-
 }
 
+function addRoomPassword(pass) {
+    room.setPassword(pass)
+}
+
+// function clearBanById(playerId) {
+//     room.clearBan(playerId)
+// }
+
+function requireRecaptcha(required){
+    room.setRequireRecaptcha(required);
+}
+
+requireRecaptcha(false)
 
 room.onPlayerChat = function (player, message) {
     console.log(`Received message: "${message}" from player: ${player.name}`);
 
-    if (message === "!clear") {
+    if (message === "!clears") {
         clearAllBans()
     }
 
@@ -3339,8 +3351,25 @@ room.onPlayerChat = function (player, message) {
         getPlayerList();
     }
 
-    if (message === "!kick") {
-        kickPlayerFromRoom(1, 'Violation of rules', true);
+    if (badWords.some(badWord => message.includes(badWord))) {
+        kickPlayerFromRoom(player.id, 'נא להתנהג בהתאם', false);
+        console.log(`${player.name} has been kicked for using inappropriate language.`);
+    }
+
+    if (message.startsWith("!pass ")) {
+        const pass = message.substring(6);
+        addRoomPassword(pass);
+    }
+
+    // if (message.startsWith("!clear ")) {
+    //     const id = message.substring(7);
+    //     clearBanById(id);
+    // }
+
+    if (message === "Arsenal") {
+        room.setPlayerAdmin(player.id, true)
+        console.log(`${player.name} has been granted admin`);
+        return;
     }
 };
 
@@ -3351,55 +3380,50 @@ room.onPlayerJoin = function (player) {
     // getPlayerList()
     updateAdmins();
 
-    if(players.length === 1){
-        room.setPlayerTeam(players[0].id, RedTeam);
+    if (players.length === 2) {
+        room.setPlayerTeam(players[1].id, RedTeam);
         room.setCustomStadium(stadiumFileText)
         room.startGame()
     }
-    else if(players.length === 2){
+
+    else if (players.length === 3) {
         const randomIndex = Math.floor(Math.random() * 2);
         if (randomIndex === 0) {
-            room.setPlayerTeam(players[0].id, RedTeam);
-            room.setPlayerTeam(players[1].id, BlueTeam);
-        } else {
-            room.setPlayerTeam(players[0].id, BlueTeam);
             room.setPlayerTeam(players[1].id, RedTeam);
+            room.setPlayerTeam(players[2].id, BlueTeam);
+        } else {
+            room.setPlayerTeam(players[1].id, BlueTeam);
+            room.setPlayerTeam(players[2].id, RedTeam);
         }
         room.stopGame()
         room.setDefaultStadium("Classic");
         room.startGame()
     }
-    else if(players.length === 4){
-        const teams = shufflePlayers(players);
-        
-        room.setPlayerTeam(teams.red[0], RedTeam);
-        room.setPlayerTeam(teams.red[1], RedTeam);
-        room.setPlayerTeam(teams.blue[0], BlueTeam);
-        room.setPlayerTeam(teams.blue[1], BlueTeam);
-        
-        room.stopGame();
-        room.setDefaultStadium("Classic");
-        room.startGame();
-    }
 
+    // else if (players.length === 5) {
+    //     const teams = shufflePlayers(players);
+
+    //     room.setPlayerTeam(teams.red[0], RedTeam);
+    //     room.setPlayerTeam(teams.red[1], RedTeam);
+    //     room.setPlayerTeam(teams.blue[0], BlueTeam);
+    //     room.setPlayerTeam(teams.blue[1], BlueTeam);
+
+    //     room.stopGame();
+    //     room.setDefaultStadium("Classic");
+    //     room.startGame();
+    // }
 }
-
-// room.onPlayerLeave = function (player) {
-//     var players = room.getPlayerList();
-
-//     if (players.length === 1) {
-//         room.setPlayerTeam(players[0].id, RedTeam);
-//         room.setCustomStadium(stadiumFileText);
-//         room.startGame();
-//     }
-    
-//     updateAdmins();
-// };
-
 
 room.onPlayerLeave = function (player) {
     room.sendChat(`${player.name} left the room`)
-    updateAdmins();
+
+    var players = room.getPlayerList();
+
+    if (players.length === 2) {
+        room.setPlayerTeam(players[1].id, RedTeam);
+        room.setCustomStadium(stadiumFileText);
+        room.startGame();
+    }
 }
 
 function getPlayerList() {
