@@ -5,6 +5,7 @@
 // const roomManager = new RoomManager(room);
 // roomManager.clearAllBans();
 
+
 var room = HBInit({
     roomName: "Test",
     maxPlayers: 10,
@@ -18,6 +19,21 @@ var room = HBInit({
     token: "thr1.AAAAAGd3Ye7VEzP7zwygLA.Ic6aVUdLBfU",
     noPlayer: true
 });
+
+
+const RedTeam  = 1
+const BlueTeam  = 2
+
+let lastTeamCombination = [];
+
+function shufflePlayers(players) {
+    const shuffled = players.sort(() => Math.random() - 0.5);
+    
+    return {
+        red: [shuffled[0].id, shuffled[1].id],
+        blue: [shuffled[2].id, shuffled[3].id]
+    };
+}
 
 var stadiumFileText = `
 {
@@ -3294,6 +3310,7 @@ room.setCustomStadium(stadiumFileText)
 room.setScoreLimit(3);
 room.setTimeLimit(3);
 
+
 // If there are no admins left in the room give admin to one of the remaining players.
 function updateAdmins() {
     // Get all players
@@ -3328,10 +3345,57 @@ room.onPlayerChat = function (player, message) {
 };
 
 room.onPlayerJoin = function (player) {
+    var players = room.getPlayerList();
+
     room.sendChat(`${player.name} welcome to our room`, player.id)
     // getPlayerList()
     updateAdmins();
+
+    if(players.length === 1){
+        room.setPlayerTeam(players[0].id, RedTeam);
+        room.setCustomStadium(stadiumFileText)
+        room.startGame()
+    }
+    else if(players.length === 2){
+        const randomIndex = Math.floor(Math.random() * 2);
+        if (randomIndex === 0) {
+            room.setPlayerTeam(players[0].id, RedTeam);
+            room.setPlayerTeam(players[1].id, BlueTeam);
+        } else {
+            room.setPlayerTeam(players[0].id, BlueTeam);
+            room.setPlayerTeam(players[1].id, RedTeam);
+        }
+        room.stopGame()
+        room.setDefaultStadium("Classic");
+        room.startGame()
+    }
+    else if(players.length === 4){
+        const teams = shufflePlayers(players);
+        
+        room.setPlayerTeam(teams.red[0], RedTeam);
+        room.setPlayerTeam(teams.red[1], RedTeam);
+        room.setPlayerTeam(teams.blue[0], BlueTeam);
+        room.setPlayerTeam(teams.blue[1], BlueTeam);
+        
+        room.stopGame();
+        room.setDefaultStadium("Classic");
+        room.startGame();
+    }
+
 }
+
+// room.onPlayerLeave = function (player) {
+//     var players = room.getPlayerList();
+
+//     if (players.length === 1) {
+//         room.setPlayerTeam(players[0].id, RedTeam);
+//         room.setCustomStadium(stadiumFileText);
+//         room.startGame();
+//     }
+    
+//     updateAdmins();
+// };
+
 
 room.onPlayerLeave = function (player) {
     room.sendChat(`${player.name} left the room`)
