@@ -282,6 +282,8 @@ var room = HBInit({
 
 const RedTeam = 1
 const BlueTeam = 2
+const SpecTeam = 0
+
 
 const badWords =
     ["בן זונה", "בן שרמוטה", "מניאק",
@@ -292,12 +294,25 @@ const messageCounts = {};
 
 let lastTeamCombination = [];
 
-function shufflePlayers(players) {
-    const shuffled = players.sort(() => Math.random() - 0.5);
+function shufflePlayers4(players) {
+    const filteredPlayers = players.filter(player => player.id !== 0);
+    
+    const shuffled = filteredPlayers.sort(() => Math.random() - 0.5);
 
     return {
-        red: [shuffled[0].id, shuffled[1].id],
-        blue: [shuffled[2].id, shuffled[3].id]
+        red: [shuffled[0].id, shuffled[1].id], // Using the first two from the filtered array
+        blue: [shuffled[2].id, shuffled[3].id] // Using the next two
+    };
+}
+
+function shufflePlayers6(players) {
+    const filteredPlayers = players.filter(player => player.id !== 0);
+    
+    const shuffled = filteredPlayers.sort(() => Math.random() - 0.5);
+
+    return {
+        teamA: [shuffled[0].id, shuffled[1].id, shuffled[2].id], // First team
+        teamB: [shuffled[3].id, shuffled[4].id, shuffled[5].id]  // Second team
     };
 }
 
@@ -424,28 +439,82 @@ room.onPlayerJoin = function (player) {
         room.startGame()
     }
 
-    // else if (players.length === 5) {
-    //     const teams = shufflePlayers(players);
+    else if (players.length === 5) {
+        const teams = shufflePlayers4(players);
+    
+        room.setPlayerTeam(teams.red[0], RedTeam);
+        room.setPlayerTeam(teams.red[1], RedTeam);
+        room.setPlayerTeam(teams.blue[0], BlueTeam);
+        room.setPlayerTeam(teams.blue[1], BlueTeam);
+    
+        room.stopGame();
+        room.setDefaultStadium("Classic");
+        room.startGame();
+    }
 
-    //     room.setPlayerTeam(teams.red[0], RedTeam);
-    //     room.setPlayerTeam(teams.red[1], RedTeam);
-    //     room.setPlayerTeam(teams.blue[0], BlueTeam);
-    //     room.setPlayerTeam(teams.blue[1], BlueTeam);
+    else if (players.length === 7) {
+        const teams = shufflePlayers6(players);
 
-    //     room.stopGame();
-    //     room.setDefaultStadium("Classic");
-    //     room.startGame();
-    // }
+        room.setPlayerTeam(teams.teamA[0], RedTeam);  
+        room.setPlayerTeam(teams.teamA[1], RedTeam);
+        room.setPlayerTeam(teams.teamA[2], RedTeam);
+        
+        room.setPlayerTeam(teams.teamB[0], BlueTeam);
+        room.setPlayerTeam(teams.teamB[1], BlueTeam);
+        room.setPlayerTeam(teams.teamB[2], BlueTeam);
+    
+        room.stopGame();
+        room.setDefaultStadium("Big");
+        room.startGame();
+    }
 }
 
 room.onPlayerLeave = function (player) {
-    room.sendChat(`${player.name} left the room`)
 
-    var players = room.getPlayerList();
+    const players = room.getPlayerList();
 
     if (players.length === 2) {
         room.setPlayerTeam(players[1].id, RedTeam);
+        room.stopGame();
         room.setCustomStadium(stadiumFileText);
+        room.startGame();
+    }
+
+    else if (players.length === 4) {
+        const randomIndex = Math.floor(Math.random() * 2);
+        if (randomIndex === 0) {
+            room.setPlayerTeam(players[1].id, RedTeam);
+            room.setPlayerTeam(players[2].id, BlueTeam);
+            room.setPlayerTeam(players[3].id, SpecTeam);
+        } else {
+            room.setPlayerTeam(players[1].id, BlueTeam);
+            room.setPlayerTeam(players[2].id, RedTeam);
+            room.setPlayerTeam(players[3].id, SpecTeam);
+        }
+        room.stopGame()
+        room.setDefaultStadium("Classic");
+        room.startGame()
+    }
+
+    else if (players.length === 6) {
+        const teams = shufflePlayers4(players);
+
+        room.setPlayerTeam(teams.red[0], RedTeam);
+        room.setPlayerTeam(teams.red[1], RedTeam);
+        room.setPlayerTeam(teams.blue[0], BlueTeam);
+        room.setPlayerTeam(teams.blue[1], BlueTeam);
+
+        const sortedPlayers = players.filter(player => player.id !== 0).sort((a, b) => b.id - a.id);
+        const lastPlayer = sortedPlayers[4];
+
+        if (lastPlayer) {
+            room.setPlayerTeam(lastPlayer.id, SpecTeam);
+        }
+
+
+
+        room.stopGame();
+        room.setDefaultStadium("Classic");
         room.startGame();
     }
 }
