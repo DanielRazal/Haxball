@@ -276,7 +276,7 @@ var room = HBInit({
         lat: 31.0461,
         lon: 34.8516
     },
-    token: "thr1.AAAAAGeCS2Dln9i4-WwdZA.Kj05C2pseIQ",
+    token: "thr1.AAAAAGeCsXS1cNq2O4zfuw.t4u5J6kYVVg",
     noPlayer: false,
 });
 
@@ -293,15 +293,9 @@ room.onPlayerJoin = function (player) {
 
     players.forEach((currentPlayer) => {
         const existingUser = users.find(user => user.username === player.name);
-        console.log(!existingUser);
-        
         
         if (!existingUser) {
             room.sendChat(`Hello ${currentPlayer.name}, please register with the "!register + password" command.`, currentPlayer.id);
-
-            setTimeout(() => {
-                room.kickPlayer(player.id, "Time expired for registration.", false);
-            }, 30000);
 
             // room.setPlayerTeam(currentPlayer.id, SpecTeam);
         } else {
@@ -411,7 +405,14 @@ room.onPlayerChat = function(player, message) {
 
     const existingUser = users.find(user => user.username === player.name);
 
-    if (!existingUser) {
+    if (existingUser) {
+        if (message.startsWith("!register ")) {
+            room.sendChat(`You are already registered as "${player.name}".`, player.id);
+            return false;
+        }}
+
+        else {
+        
         if (message.startsWith("!register ")) {
             const pass = message.substring(10);
             
@@ -425,60 +426,62 @@ room.onPlayerChat = function(player, message) {
                 const duplicateUser = users.find(user => user.username === player.name);
                 if (duplicateUser) {
                     room.sendChat(`Registration failed: Username "${player.name}" already exists.`, player.id);
-                    return;
+                    return false; 
                 }
                 
                 users.push(userData);
                 localStorage.setItem("users", JSON.stringify(users));
                 room.sendChat(`Registration successful for: ${player.name}`, player.id);
+
+                const updatedUsers = JSON.parse(localStorage.getItem("users")) || [];
+                const existingUser = updatedUsers.find(user => user.username === player.name);
+
+                if(!existingUser){
+                    setTimeout(() => {
+                        room.kickPlayer(player.id, "Time expired for registration.", false);
+                    }, 10000);
+                }
+
             } catch (error) {
                 console.error("Error accessing local storage", error);
                 room.sendChat(`Failed to register ${player.name}. Please try again.`, player.id);
             }
         } else {
             room.sendChat("You are not registered. Please use the command '!register + password' to register.", player.id);
-
             return false;
         }
-        return; 
     }
     
     if (message.startsWith("!login ")) {
-        const password = message.substring(7); // מחלץ את הסיסמה מההודעה
+        const password = message.substring(7);
         
-        // שקול את המשתמשים מהLocal Storage
         const users = JSON.parse(localStorage.getItem("users")) || [];
         
-        // בדוק אם יש משתמש תואם לפי שם המשתמש של השחקן
         const registeredUser = users.find(user => user.username === player.name && user.password === password);
         
         if (registeredUser) {
             room.sendChat(`Welcome back, ${player.name}! You are now logged in.`, player.id);
             console.log(player.id);
-            delete failedLoginAttempts[player.id]; // מאפס את מספר הניסיונות במקרה של כניסה מוצלחת
+            delete failedLoginAttempts[player.id];
         } else {
-            // הגדר את מספר הניסיונות הכושלים
             if (!failedLoginAttempts[player.id]) {
                 failedLoginAttempts[player.id] = 0;
             }
             
-            // העלה את מספר הניסיונות
             failedLoginAttempts[player.id]++;
             room.sendChat("Invalid password. Please try again.", player.id);
             console.log(`Failed login attempts for ${player.name}: ${failedLoginAttempts[player.id]}`);
 
-            // אם השחקן עבר 3 ניסיונות כושלים, קיק אותו
             if (failedLoginAttempts[player.id] === 3) {
                 kickPlayerFromRoom(player.id, "Too many failed login attempts.", false);
                 console.log(`Kicking player ${player.name} (ID: ${player.id}) after 3 failed attempts`);
-                // נקה את המידע על הניסיונות שגויים אחרי קיק
                 delete failedLoginAttempts[player.id];
             }
         }
-        return false; // ביטול של המשך ביצוע
+        return false;
     }
-
 };
+
 
 function kickPlayerFromRoom(playerID, reason, ban) {
 
